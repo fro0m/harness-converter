@@ -1,0 +1,11 @@
+{
+  "name": "Test Rule 2",
+  "description": "This is test rule 2",
+  "rules": [
+    {
+      "pattern": "test pattern 2",
+      "message": "Test message 2"
+    }
+  ],
+  "content": "This is test content 2."
+}

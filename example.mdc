@@ -1,0 +1,16 @@
+---
+name: "TypeScript Best Practices"
+description: "Coding standards and practices for TypeScript development"
+alwaysApply: true
+---
+
+When working with TypeScript code, please follow these guidelines:
+
+- Use strict TypeScript configuration
+- Always define explicit types for function parameters and return values
+- Use interfaces for object types instead of type aliases when possible
+- Prefer readonly properties when data shouldn't be mutated
+- Use union types instead of enums when appropriate
+- Always handle null and undefined cases
+- Use generic types to make code reusable
+- Document public APIs with TSDoc comments

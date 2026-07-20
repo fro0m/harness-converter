@@ -1,0 +1,5 @@
+{
+  "name": "Specific Rule No ApplyTo",
+  "description": "This rule also applies to all files as applyTo is missing.",
+  "content": "Check for TODO comments."
+}

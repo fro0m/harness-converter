@@ -1,0 +1,18 @@
+{
+  "name": "JavaScript Standards",
+  "description": "Enforce JavaScript coding standards.",
+  "content": "Follow these guidelines for all JavaScript files.\nEnsure all functions have JSDoc comments.",
+  "applyTo": ["**/*.js", "**/*.jsx"],
+  "rules": [
+    {
+      "id": "no-console",
+      "message": "Avoid using console.log in production code.",
+      "severity": "warning"
+    },
+    {
+      "id": "strict-equality",
+      "message": "Use === and !== for comparisons.",
+      "severity": "error"
+    }
+  ]
+}

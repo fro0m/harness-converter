@@ -1,0 +1,6 @@
+/output/**
+/output_cli/**
+**/__pycache__/**
+/output_test*/**
+/test_project_programmatic/**
+.venv/

@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "harness-converter"
+version = "0.1.0"
+description = "Convert AI coding rules and instruction files (harnesses) among different IDEs and AI agentic environments"
+authors = [
+    "Developer <dev@example.com>"
+]
+readme = "README.md"
+packages = [{include = "harness_converter", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+click = "^8.1.3"
+
+[tool.poetry.scripts]
+harness-converter = "harness_converter.cli:main"
+
+
+[build-system]
+requires = ["poetry-core>=1.0.0,<2.0.0"]
+build-backend = "poetry.core.masonry.api"

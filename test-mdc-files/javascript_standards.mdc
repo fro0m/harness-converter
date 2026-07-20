@@ -1,0 +1,20 @@
+{
+  "name": "JavaScript Standards",
+  "description": "Standards and practices for JavaScript development",
+  "applyTo": ["*.js", "*.jsx", "*.ts", "*.tsx"],
+  "rules": [
+    {
+      "pattern": "console\\.log\\(",
+      "message": "Consider using a logger instead of console.log for production code"
+    },
+    {
+      "pattern": "TODO:",
+      "message": "There's a TODO comment that needs to be addressed"
+    },
+    {
+      "pattern": "var ",
+      "message": "Use 'let' or 'const' instead of 'var' for variable declarations"
+    }
+  ],
+  "content": "When working with JavaScript code, please follow these guidelines:\n\n- Use modern ES6+ syntax when possible\n- Prefer arrow functions for callbacks\n- Use async/await instead of raw promises\n- Always include proper error handling\n- Document complex functions with JSDoc comments"
+}

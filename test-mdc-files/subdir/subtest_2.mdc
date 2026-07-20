@@ -1,0 +1,11 @@
+{
+  "name": "Subdir Test Rule 2",
+  "description": "This is subdir test rule 2",
+  "rules": [
+    {
+      "pattern": "subdir test pattern 2",
+      "message": "Subdir test message 2"
+    }
+  ],
+  "content": "This is subdir test content 2."
+}

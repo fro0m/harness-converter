@@ -1,0 +1,6 @@
+{
+  "name": "Global Rule",
+  "description": "This rule applies to all files.",
+  "content": "Ensure all files have a license header.",
+  "alwaysApply": true
+}
