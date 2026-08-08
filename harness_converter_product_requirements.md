@@ -63,7 +63,7 @@ The Harness Converter follows a 4-stage processing pipeline:
 ### Stage 4: Deployment
 *   **Input**: Source directory containing `raw-rules-template/`
 *   **Process**: 
-    *   If no output directory specified, create converted rules in `raw-rules-template/../copy-content-to-prj-directory/`
+    *   The output directory must be specified explicitly (no default); converted rules are written to the given output directory
     *   Place files in appropriate directory structure for each target tool
 *   **Output**: Ready-to-deploy rule files in correct locations
 
@@ -95,7 +95,7 @@ The Harness Converter follows a 4-stage processing pipeline:
 ### Command Line Interface
 *   Accept source directory path (containing `raw-rules-template/`)
 *   Accept path to `rules-description.json` configuration file (optional - defaults to `rules_definitions.json` in same directory as `raw-rules-template/`)
-*   Optional output directory specification
+*   Output directory specification (required; both source and output must be specified explicitly)
 *   Help and usage information
 ### Feature Prioritization (MoSCoW)
 *   **Must-have**: 
@@ -213,13 +213,10 @@ Note: Stage 2 validation errors are reported to standard output, not saved to a 
 
 ### Command Line Interface
 ```bash
-# Basic usage with default configuration file (rules_definitions.json) and output directory
-./harness-converter.py /path/to/source/directory
+# Basic usage with default configuration file (rules_definitions.json); output directory is required
+./harness-converter.py /path/to/source/directory --output /custom/output/path
 
-# Basic usage with explicit configuration file and default output directory
-./harness-converter.py /path/to/source/directory /path/to/rules-description.json
-
-# With custom output directory
+# Basic usage with explicit configuration file and output directory
 ./harness-converter.py /path/to/source/directory /path/to/rules-description.json --output /custom/output/path
 
 ```

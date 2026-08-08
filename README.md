@@ -95,21 +95,15 @@ After installation, you can run the script using `poetry run`.
 ### Basic usage with default configuration:
 
 ```bash
-poetry run harness-converter path/to/project
+poetry run harness-converter path/to/project -o path/to/output
 ```
 
-This will look for `rules_definitions.json` in the same directory as `raw-rules-template/` for variable substitution.
+This will look for `rules_definitions.json` in the same directory as `raw-rules-template/` for variable substitution. The output directory (`-o`) is required.
 
 ### Specify a custom configuration file:
 
 ```bash
-poetry run harness-converter path/to/project path/to/rules-description.json
-```
-
-### Convert and save to a specific output directory:
-
-```bash
-poetry run harness-converter path/to/project -o path/to/output
+poetry run harness-converter path/to/project path/to/rules-description.json -o path/to/output
 ```
 
 ### Full example with explicit configuration and output directory:
@@ -139,6 +133,55 @@ When processing, the tool will:
 poetry run harness-converter --help
 ```
 
+## Installing Converted Rules into a Project
+
+Two install scripts are provided. Both are portable (no hardcoded paths) and resolve their own location, so they work from any clone on any Ubuntu machine.
+
+| Script | Role | When to use |
+|---|---|---|
+| `install_harness.sh` | Full pipeline: **convert → install → verify** referenced paths | One-shot: take a toolkit, generate all harness formats, copy them into a target project, and check that every path referenced in `AGENTS.md` resolves. Non-interactive and idempotent. |
+| `install_rules_in_project.sh` | Install an **already-built** bundle only | You already ran the converter (or have a pre-built `copy-content-to-prj-directory/`) and just want to deploy it. Offers symlink (default) vs copy, with interactive prompts before replacing existing files. |
+
+### `install_harness.sh` — convert + install + verify
+
+```bash
+./install_harness.sh <toolkit_dir> <target_dir> [rules_definitions.json]
+```
+
+- Converts `<toolkit_dir>` (which must contain `raw-rules-template/`) into `<toolkit_dir>/copy-content-to-prj-directory/` using the given config, or `<toolkit_dir>/rules_definitions.json` by default.
+- Force-replaces the generated harness directories in `<target_dir>` (these are generated files, never hand-edited) and copies the bundle in. `.github/instructions/` is merged into an existing `.github/` rather than clobbering other `.github` content (e.g. workflows).
+- Verifies every referenced path in the installed `AGENTS.md` resolves against the target.
+- Override the bundle source by exporting `INSTALL_BUNDLE=<path>` (skips conversion if the bundle already exists) — useful for per-variant output dirs.
+
+```bash
+# Typical use
+./install_harness.sh /path/to/toolkit /path/to/target/project
+
+# With an explicit config
+./install_harness.sh /path/to/toolkit /path/to/target/project /path/to/rules_definitions.json
+
+# Install a pre-built bundle only (skip conversion)
+INSTALL_BUNDLE=/path/to/bundle ./install_harness.sh /path/to/toolkit /path/to/target/project
+```
+
+### `install_rules_in_project.sh` — install a pre-built bundle
+
+```bash
+./install_rules_in_project.sh <target_directory> <source_directory> [--copy]
+```
+
+Both directories are **required** — the script does not default either to the current directory:
+
+```bash
+# Create symbolic links (default)
+./install_rules_in_project.sh /path/to/target/project /path/to/source-parent
+
+# Copy files instead of linking
+./install_rules_in_project.sh /path/to/target/project /path/to/source-parent --copy
+```
+
+`<source_directory>` is the directory that contains `copy-content-to-prj-directory/`. Use `--copy` (or `-c`) to copy the rules into the target instead of symlinking. Existing files in the target are only replaced after an interactive confirmation prompt.
+
 ## Development
 
 To set up the development environment:
@@ -167,5 +210,5 @@ pip install -e .
 ```
 To run the script if installed with pip:
 ```bash
-harness-converter path/to/file.mdc
+harness-converter path/to/project -o path/to/output
 ```

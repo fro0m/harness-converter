@@ -207,13 +207,17 @@ def extract_file_paths_from_content(content: str) -> List[str]:
         # Absolute paths starting with / or ~
         r'["\']([/~][^\s"\']+)["\']',
         r'["\']([A-Za-z]:[\\\/][^\s"\']+)["\']',  # Windows paths
-        # Relative paths 
+        # Relative paths
         r'["\']([.]{1,2}[/\\][^\s"\']+)["\']',
         # Common file extensions
         r'["\']([^\s"\']+\.[a-zA-Z0-9]{1,5})["\']',
-        # Path-like patterns without quotes
-        r'\b([/~][^\s]+)\b',
-        r'\b([.]{1,2}[/\\][^\s]+)\b',
+        # Path-like patterns without quotes.
+        # Use a lookbehind for whitespace/string-start instead of \b: \b before a
+        # leading '/' (~ or .) never matches (both are non-word chars), so the old
+        # \b patterns only ever captured partial paths (e.g. '/dev/...' from
+        # '/home/dev/...'). The lookbehind anchors the match at a real boundary.
+        r'(?<![^\s])([/~][^\s]+)',
+        r'(?<![^\s])([.]{1,2}[/\\][^\s]+)',
     ]
     
     for pattern in path_patterns:

@@ -12,8 +12,8 @@ def main():
     # Get the directory where this script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
-    # Path to the sample MDC file
-    sample_file = os.path.join(script_dir, 'sample.mdc')
+    # Path to the sample MDC file (test fixtures live alongside this script)
+    sample_file = os.path.join(script_dir, 'test-mdc-files', 'test_1.mdc')
     
     if not os.path.exists(sample_file):
         print(f"Error: Sample file {sample_file} not found.")
@@ -75,7 +75,7 @@ def main():
 }}''')
     
     print("\nConverting directory...")
-    output_dir = os.path.join(script_dir, 'output_test_programmatic') # Changed to avoid conflict with gitignored 'output'
+    output_dir = os.path.join(script_dir, 'output_test_programmatic') # Generated; gitignored under tests/
     os.makedirs(output_dir, exist_ok=True) # Ensure output_dir exists
     
     vscode_converted_paths, roo_converted_paths, windsurf_converted_paths, cline_converted_paths, gemini_cli_converted_paths, kilo_code_converted_paths, antigravity_converted_paths, qwen_code_converted_paths, claude_code_converted_paths, codex_converted_paths, zcode_converted_paths, copied_paths = convert_directory(test_project_dir, output_dir)

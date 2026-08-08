@@ -1,24 +1,37 @@
 #!/bin/bash
 
 # =============================================================================
-# Install Tools in Project Script
+# Install Rules in Project Script
 # =============================================================================
 #
+# Role: lower-level installer. Installs an already-built bundle (the
+# copy-content-to-prj-directory/ directory produced by harness-converter) into a
+# target project, with a choice of symlink (default) or copy (--copy) and
+# interactive prompts before replacing existing files.
+#
+# For the full convert -> install -> verify pipeline in one non-interactive
+# command, use the companion install_harness.sh instead.
+#
 # DESCRIPTION:
-#   This script creates symbolic links from files in a source directory to a
-#   target project directory. It safely handles existing files by prompting
-#   the user for confirmation before removal.
+#   This script installs files from a source directory into a target project
+#   directory, either as symbolic links (default) or as copies (--copy). It
+#   safely handles existing files by prompting the user for confirmation
+#   before removal.
 #
 # USAGE:
-#   ./install_tools_in_project.sh <target_directory> [source_directory]
+#   ./install_rules_in_project.sh <target_directory> <source_directory> [--copy]
 #
 # PARAMETERS:
-#   target_directory (required): Directory where symbolic links will be created
-#   source_directory (optional): Parent directory containing copy-content-to-prj-directory
-#                               Default: current directory (./copy-content-to-prj-directory)
+#   target_directory (required): Directory where links/copies will be created
+#   source_directory (required): Parent directory containing copy-content-to-prj-directory
+#
+# OPTIONS:
+#   --copy, -c   Copy files into the target directory instead of creating
+#                symbolic links.
 #
 # FEATURES:
-#   - Creates symbolic links for all files and directories in source
+#   - Creates symbolic links (default) or copies (--copy) for all files and
+#     directories in source
 #   - Prompts user before removing existing files/directories
 #   - Validates source and target directory existence
 #   - Provides clear feedback during installation process
@@ -27,37 +40,53 @@
 #   - Provides detailed information about what will be removed
 #
 # EXAMPLES:
-#   # Use default source directory
-#   ./install_tools_in_project.sh /path/to/my/project
+#   # Create symbolic links (default)
+#   ./install_rules_in_project.sh /path/to/my/project /path/to/tools
 #
-#   # Specify custom source directory
-#   ./install_tools_in_project.sh /path/to/my/project /path/to/tools
+#   # Copy files instead of linking
+#   ./install_rules_in_project.sh /path/to/my/project /path/to/tools --copy
 #
 # SAFETY:
 #   - Never removes files without explicit user confirmation
-#   - Only removes files that will be replaced by symbolic links
+#   - Only removes files that will be replaced by links/copies
 #   - Validates all directory paths before proceeding
 #   - Uses appropriate removal commands based on file type
-#   - Creates symbolic links with verbose output for tracking
+#   - Creates links/copies with verbose output for tracking
 #   - Handles removal errors gracefully
 #
 # =============================================================================
 
-# Check if a target directory was provided
-if [ -z "$1" ]; then
-  echo "Usage: $0 <target_directory> [source_directory]"
-  echo "  target_directory: Directory where symbolic links will be created"
-  echo "  source_directory: Parent directory containing copy-content-to-prj-directory (default: current directory)"
+# Parse options first (--copy/-c may appear anywhere)
+COPY_MODE=0
+for arg in "$@"; do
+  case "$arg" in
+    --copy|-c)
+      COPY_MODE=1
+      ;;
+  esac
+done
+
+# Build the list of positional arguments (everything that isn't an option)
+positionals=()
+for arg in "$@"; do
+  case "$arg" in
+    --copy|-c) ;;
+    *) positionals+=("$arg") ;;
+  esac
+done
+
+# Both target and source directories are required
+if [ "${#positionals[@]}" -lt 2 ]; then
+  echo "Usage: $0 <target_directory> <source_directory> [--copy]"
+  echo "  target_directory: Directory where links/copies will be created (required)"
+  echo "  source_directory: Parent directory containing copy-content-to-prj-directory (required)"
+  echo "  --copy:           Copy files instead of creating symbolic links"
   exit 1
 fi
 
-# Set script parameters
-TARGET_DIR="$1"
-if [ -n "$2" ]; then
-    SOURCE_DIR="$2/copy-content-to-prj-directory"
-else
-    SOURCE_DIR="./copy-content-to-prj-directory"
-fi
+# Set script parameters (both required, explicitly provided)
+TARGET_DIR="${positionals[0]}"
+SOURCE_DIR="${positionals[1]}/copy-content-to-prj-directory"
 
 # Validate target directory exists
 if [ ! -d "$TARGET_DIR" ]; then
@@ -135,7 +164,11 @@ confirm_removal() {
 # Change to source directory to process files from there
 cd "$SOURCE_DIR" || exit 1
 
-echo "Creating symbolic links from '$SOURCE_DIR' to '$TARGET_DIR'..."
+if [ "$COPY_MODE" -eq 1 ]; then
+  echo "Copying files from '$SOURCE_DIR' to '$TARGET_DIR'..."
+else
+  echo "Creating symbolic links from '$SOURCE_DIR' to '$TARGET_DIR'..."
+fi
 echo "Note: System files (.DS_Store, .git, etc.) will be automatically skipped."
 
 # Get list of files and directories to process (excluding . and ..)
@@ -191,11 +224,21 @@ while IFS= read -r -d '' f; do
     fi
   fi
 
-  # Create symbolic link with verbose output
-  if ln -sfv "$PWD/$f" "$TARGET_DIR/"; then
-    echo "Created link: $target_path -> $PWD/$f"
+  # Install the item: copy it (--copy) or create a symbolic link (default)
+  if [ "$COPY_MODE" -eq 1 ]; then
+    # Copy the file/directory recursively into the target directory
+    if cp -R "$f" "$TARGET_DIR/"; then
+      echo "Copied: $target_path (from $PWD/$f)"
+    else
+      echo "Failed to copy: $f"
+    fi
   else
-    echo "Failed to create link for: $f"
+    # Create symbolic link with verbose output
+    if ln -sfv "$PWD/$f" "$TARGET_DIR/"; then
+      echo "Created link: $target_path -> $PWD/$f"
+    else
+      echo "Failed to create link for: $f"
+    fi
   fi
 done < <(find . -mindepth 1 -maxdepth 1 -print0)
 

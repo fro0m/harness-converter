@@ -21,7 +21,8 @@ from .converter import (
 @click.option(
     '--output-dir', '-o',
     type=click.Path(),
-    help='Directory to save converted files. If not specified, files are saved in source_directory/copy-content-to-prj-directory/'
+    required=True,
+    help='Directory to save converted files (required).'
 )
 def main(source_directory, rules_description_json, output_dir):
     """
@@ -39,13 +40,10 @@ def main(source_directory, rules_description_json, output_dir):
     
     Examples:
 
-        # Basic usage with default configuration (rules_definitions.json) and output directory
-        harness-converter /path/to/project
+        # Basic usage with default configuration (rules_definitions.json); output dir is required
+        harness-converter /path/to/project -o /path/to/output
 
         # With explicit configuration file
-        harness-converter /path/to/project /path/to/rules-description.json
-
-        # With custom output directory
         harness-converter /path/to/project /path/to/rules-description.json -o /path/to/output
     """
     source_directory = os.path.abspath(source_directory)
@@ -71,11 +69,8 @@ def main(source_directory, rules_description_json, output_dir):
     else:
         rules_description_json = os.path.abspath(rules_description_json)
     
-    # Determine output directory
-    if output_dir:
-        output_dir = os.path.abspath(output_dir)
-    else:
-        output_dir = os.path.join(source_directory, 'copy-content-to-prj-directory')
+    # Output directory is required (validated by Click); normalize to absolute path
+    output_dir = os.path.abspath(output_dir)
     
     # Stage paths - cooked_rules_template should be sibling to raw-rules-template
     cooked_rules_dir = os.path.join(source_directory, 'cooked_rules_template')
