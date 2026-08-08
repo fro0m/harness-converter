@@ -133,54 +133,45 @@ When processing, the tool will:
 poetry run harness-converter --help
 ```
 
-## Installing Converted Rules into a Project
+## Installing a Converted Harness into a Project
 
-Two install scripts are provided. Both are portable (no hardcoded paths) and resolve their own location, so they work from any clone on any Ubuntu machine.
+A single installer script, `install_harness.sh`, is provided. It is portable (no hardcoded paths) and resolves its own location, so it works from any clone on any Ubuntu machine.
 
-| Script | Role | When to use |
-|---|---|---|
-| `install_harness.sh` | Full pipeline: **convert → install → verify** referenced paths | One-shot: take a toolkit, generate all harness formats, copy them into a target project, and check that every path referenced in `AGENTS.md` resolves. Non-interactive and idempotent. |
-| `install_rules_in_project.sh` | Install an **already-built** bundle only | You already ran the converter (or have a pre-built `copy-content-to-prj-directory/`) and just want to deploy it. Offers symlink (default) vs copy, with interactive prompts before replacing existing files. |
-
-### `install_harness.sh` — convert + install + verify
+`install_harness.sh` runs the full pipeline: **convert → install → verify**.
 
 ```bash
-./install_harness.sh <toolkit_dir> <target_dir> [rules_definitions.json]
+./install_harness.sh <toolkit_dir> <target_dir> [rules_definitions.json] [--link]
 ```
 
+It installs the **entire** converted bundle into `<target_dir>` — every top-level entry the converter produces, i.e. all eleven harness formats and any pass-through files:
+
+- `.agent/`, `.claude/`, `.clinerules/`, `.gemini/`, `.kilo/`, `.kilocode/`, `.qwen/`, `.roo/`, `.windsurf/`
+- `.github/instructions/`
+- `AGENTS.md`, `kilo.jsonc`
+
+Behavior:
+
 - Converts `<toolkit_dir>` (which must contain `raw-rules-template/`) into `<toolkit_dir>/copy-content-to-prj-directory/` using the given config, or `<toolkit_dir>/rules_definitions.json` by default.
-- Force-replaces the generated harness directories in `<target_dir>` (these are generated files, never hand-edited) and copies the bundle in. `.github/instructions/` is merged into an existing `.github/` rather than clobbering other `.github` content (e.g. workflows).
-- Verifies every referenced path in the installed `AGENTS.md` resolves against the target.
-- Override the bundle source by exporting `INSTALL_BUNDLE=<path>` (skips conversion if the bundle already exists) — useful for per-variant output dirs.
+- By default **copies** every bundle entry into `<target_dir>`. Pass `--link` (or `-l`) to **symlink** each top-level entry instead, so the target always reflects the live toolkit without reinstalling. (Symlinks are machine-local and should be gitignored in the target repo.)
+- Force-replaces the generated harness entries in `<target_dir>` (these are generated files, never hand-edited). `.github/instructions/` is **merged** into an existing real `.github/` rather than clobbering other `.github` content (e.g. workflows) — this is the only entry that needs special handling; every other entry is installed wholesale.
+- Verifies every path referenced in the installed `AGENTS.md` resolves against the target.
+- Non-interactive and idempotent: re-running it cleanly updates the target.
 
 ```bash
-# Typical use
+# Typical use (convert + copy all harness formats in + verify)
 ./install_harness.sh /path/to/toolkit /path/to/target/project
 
 # With an explicit config
 ./install_harness.sh /path/to/toolkit /path/to/target/project /path/to/rules_definitions.json
 
+# Symlink the harness into the target instead of copying
+./install_harness.sh /path/to/toolkit /path/to/target/project --link
+
 # Install a pre-built bundle only (skip conversion)
 INSTALL_BUNDLE=/path/to/bundle ./install_harness.sh /path/to/toolkit /path/to/target/project
 ```
 
-### `install_rules_in_project.sh` — install a pre-built bundle
-
-```bash
-./install_rules_in_project.sh <target_directory> <source_directory> [--copy]
-```
-
-Both directories are **required** — the script does not default either to the current directory:
-
-```bash
-# Create symbolic links (default)
-./install_rules_in_project.sh /path/to/target/project /path/to/source-parent
-
-# Copy files instead of linking
-./install_rules_in_project.sh /path/to/target/project /path/to/source-parent --copy
-```
-
-`<source_directory>` is the directory that contains `copy-content-to-prj-directory/`. Use `--copy` (or `-c`) to copy the rules into the target instead of symlinking. Existing files in the target are only replaced after an interactive confirmation prompt.
+`INSTALL_BUNDLE=<path>` overrides the bundle source and skips conversion if the bundle already exists — useful for per-variant output dirs.
 
 ## Development
 

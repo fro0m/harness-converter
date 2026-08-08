@@ -1,5 +1,6 @@
 #!/bin/bash
-# install_harness.sh — convert a toolkit and install its bundle into a target project.
+# install_harness.sh — convert a toolkit and install its harness bundle into a
+# target project.
 #
 # Full pipeline: convert -> install -> verify.
 #
@@ -7,22 +8,20 @@
 #
 # - Converts <toolkit_dir> via harness-converter into <toolkit_dir>/copy-content-to-prj-directory
 #   (using the given rules_definitions.json, or the toolkit's default).
-# - Installs the bundle into <target_dir>: by default COPIES it; with --link,
-#   SYMLINKS each top-level bundle entry into the target instead (so the harness
-#   always reflects the live toolkit without reinstall). Symlinks are
-#   machine-local and should be gitignored in the target repo (see
-#   software-developers-onboarding/docs/ai_harness_setup.md).
-# - Force-replaces the generated harness dirs in <target_dir> (these are generated
-#   files, never hand-edited). Merges .github/instructions/ into an existing
-#   .github/ rather than clobbering other .github content.
+# - Installs the ENTIRE bundle into <target_dir> — that is, every top-level entry
+#   produced by the converter: all eleven harness formats (.agent/, .claude/,
+#   .clinerules/, .gemini/, .github/instructions/, .kilo/, .kilocode/, .qwen/,
+#   .roo/, .windsurf/, AGENTS.md, kilo.jsonc) plus any other files the converter
+#   copied through. By default it COPIES them; with --link it SYMLINKS each
+#   top-level bundle entry into the target instead (so the harness always reflects
+#   the live toolkit without reinstall). Symlinks are machine-local and should be
+#   gitignored in the target repo.
+# - Force-replaces the generated harness entries in <target_dir> (these are
+#   generated files, never hand-edited). Merges .github/instructions/ into an
+#   existing .github/ rather than clobbering other .github content.
 # - Verifies every referenced path in the installed AGENTS.md resolves.
 #
 # Designed to be non-interactive and idempotent.
-#
-# Role: this is the high-level "do everything" entry point (convert + install +
-# verify). For installing an already-built bundle only — with a choice of symlink
-# vs copy and interactive conflict prompts — use the companion
-# install_rules_in_project.sh instead.
 #
 # Portability: this script locates the harness-converter source relative to its
 # own location (no hardcoded paths). Python is resolved as follows:
@@ -98,6 +97,11 @@ else
   echo "==> Converting... (skipped — using preset bundle $BUNDLE)"
 fi
 
+if [ ! -d "$BUNDLE" ]; then
+  echo "Error: bundle not found at $BUNDLE" >&2
+  exit 1
+fi
+
 # 2. Clean generated harness artifacts in target (generated files; never hand-edited).
 #    Remove both real dirs/files and any leftover symlinks from prior symlink installs.
 #    CRITICAL: remove any symlink BEFORE operating on a path beneath it. If .github is a
@@ -105,8 +109,9 @@ fi
 #    and delete the bundle's own files. So: unlink .github first, then clean instructions.
 #    NOTE: .github is NOT removed wholesale when real — a project may have real
 #    .github/workflows. Only .github/instructions (the harness output) is removed.
-GENERATED_DIRS=(.agent .claude .clinerules .gemini .kilo .kilocode .qwen .roo .windsurf)
-for d in "${GENERATED_DIRS[@]}"; do
+echo "==> Cleaning generated entries in target..."
+GENERATED_TOP=(.agent .claude .clinerules .gemini .kilo .kilocode .qwen .roo .windsurf kilo.jsonc AGENTS.md)
+for d in "${GENERATED_TOP[@]}"; do
   if [ -L "$TARGET/$d" ] || [ -e "$TARGET/$d" ]; then rm -rf "$TARGET/$d"; fi
 done
 if [ -L "$TARGET/.github" ]; then
@@ -114,52 +119,62 @@ if [ -L "$TARGET/.github" ]; then
 else
   rm -rf "$TARGET/.github/instructions"         # real .github — clear only the harness output
 fi
-rm -f "$TARGET/kilo.jsonc" "$TARGET/AGENTS.md"
 
-# 3. Install bundle into target (non-interactive: we pre-cleaned conflicts).
-#    --link: symlink each top-level entry into the target (default: copy).
-#    .github is handled specially to preserve any real .github content
-#    (e.g. .github/workflows): only .github/instructions is installed.
-echo "==> Installing..."
+# 3. Install the ENTIRE bundle into the target.
+#    Iterate every top-level bundle entry. Each entry is installed whole — either
+#    copied or symlinked into the target. The ONE special case is .github: a project
+#    may keep its own real .github/ (e.g. workflows), so only .github/instructions is
+#    deployed and merged, never clobbering the rest of .github.
+echo "==> Installing all bundle entries..."
 cd "$BUNDLE"
 
+install_count=0
+
 # Install one top-level bundle entry into the target.
-# Args: <item basename>. Uses LINK_MODE, $BUNDLE, $TARGET from the environment.
-install_item() {
-  local item="$1"
-  local src="$BUNDLE/$item"
-  if [ "$item" = ".github" ]; then
+# Args: <entry basename>. Uses LINK_MODE, $BUNDLE, $TARGET from the environment.
+# Handles ALL bundle entries; .github is the only entry that needs special handling
+# (merge instructions only) — everything else is installed wholesale.
+install_entry() {
+  local entry="$1"
+  local src="$BUNDLE/$entry"
+
+  if [ "$entry" = ".github" ]; then
+    # .github: preserve any existing real .github content; only deploy instructions.
     mkdir -p "$TARGET/.github"
-    if [ "$LINK_MODE" -eq 1 ]; then
-      # Remove a stale instructions (dir or symlink) then link the bundle's dir.
-      rm -rf "$TARGET/.github/instructions"
-      if [ -d "$BUNDLE/.github/instructions" ]; then
+    rm -rf "$TARGET/.github/instructions"
+    if [ -d "$BUNDLE/.github/instructions" ]; then
+      if [ "$LINK_MODE" -eq 1 ]; then
         ln -sfn "$BUNDLE/.github/instructions" "$TARGET/.github/instructions"
-      fi
-      echo "  linked: .github/instructions"
-    else
-      mkdir -p "$TARGET/.github/instructions"
-      if [ -d "$BUNDLE/.github/instructions" ]; then
+        echo "  linked: .github/instructions"
+      else
+        mkdir -p "$TARGET/.github/instructions"
         cp -R "$BUNDLE/.github/instructions/." "$TARGET/.github/instructions/"
+        echo "  merged: .github/instructions"
       fi
-      echo "  merged: .github/instructions"
+      install_count=$((install_count + 1))
     fi
     return
   fi
+
+  # All other entries (harness dirs + root files): install wholesale.
   if [ "$LINK_MODE" -eq 1 ]; then
-    ln -sfn "$src" "$TARGET/$item"
-    echo "  linked: $item"
+    ln -sfn "$src" "$TARGET/$entry"
+    echo "  linked: $entry"
   else
-    cp -R "$item" "$TARGET/"
-    echo "  copied: $item"
+    cp -R "$entry" "$TARGET/"
+    echo "  copied: $entry"
   fi
+  install_count=$((install_count + 1))
 }
-for item in *; do [ -e "$item" ] && install_item "$item"; done
-for item in .*; do
-  [ "$item" = "." ] && continue
-  [ "$item" = ".." ] && continue
-  [ -e "$item" ] && install_item "$item"
+
+# Iterate every top-level entry — regular and dotfiles — so nothing is skipped.
+shopt -s dotglob nullglob
+for entry in *; do
+  [ -e "$entry" ] && install_entry "$entry"
 done
+shopt -u dotglob nullglob
+
+echo "  installed $install_count top-level bundle entries"
 
 # 4. Verify referenced paths resolve (validate against target dir)
 echo "==> Verifying references..."
