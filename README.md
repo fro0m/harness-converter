@@ -1,12 +1,12 @@
 # Harness Converter
 
-A Python application that **converts AI coding rules and instruction files (harnesses) among different IDEs and AI agentic environments**. It takes a single source of rules authored as Cursor IDE `.mdc` files and re-emits them in the on-disk formats expected by each supported target — VS Code, Roo Code, Windsurf, Cline, Kilo Code, Gemini CLI, Google Antigravity, Qwen Code, Claude Code, OpenAI Codex, and ZCode.
+A Python application that **converts AI coding rules and instruction files (harnesses) among different IDEs and AI agentic environments**. It takes a single source of rules authored as Cursor IDE `.mdc` files and re-emits them in the on-disk formats expected by each supported target — VS Code, Roo Code, Windsurf, Cline, Kilo Code, Gemini CLI, Google Antigravity, Qwen Code, Claude Code, OpenAI Codex (natural-language `AGENTS.md` + `.rules` command-policy scaffold), and ZCode.
 
 Each target tool stores its "harness" (the rules/instructions that steer the AI agent or editor) in a different directory and file format. Harness Converter converts a single source of truth into the harness layout required by every supported environment, so you can keep one parameterized rule set and deploy it across all of them.
 
 ## Output Formats
 
-Harness Converter transforms Cursor IDE rules MDC files into eleven different harness formats:
+Harness Converter transforms Cursor IDE rules MDC files into twelve different harness outputs:
 
 1. **VS Code instruction files** (.instructions.md) - Compatible with VS Code Copilot as described in the [VS Code Copilot Customization documentation](https://code.visualstudio.com/docs/copilot/copilot-customization#_instruction-files)
 2. **Roo Code rules files** (.md) - Compatible with Roo Code custom instructions as described in the [Roo Code Custom Instructions documentation](https://docs.roocode.com/features/custom-instructions/)
@@ -19,6 +19,8 @@ Harness Converter transforms Cursor IDE rules MDC files into eleven different ha
 9. **Claude Code rules files** (.md) - Compatible with Claude Code as described in the [Claude Code Memory documentation](https://code.claude.com/docs/en/memory)
 10. **OpenAI Codex rules files** (.md) - Compatible with OpenAI Codex CLI as described in the [Codex AGENTS.md documentation](https://developers.openai.com/codex/guides/agents-md)
 11. **ZCode rules files** (.md) - Compatible with ZCode as described in the [ZCode Agent documentation](https://zcode.z.ai/en/docs/agents)
+
+In addition, the converter emits a **Codex `.rules` command-policy scaffold** (`.codex/rules/default.rules`) alongside the Codex `AGENTS.md`. These are two distinct Codex mechanisms: `AGENTS.md` carries the natural-language instructions (the converted rules), while `.rules` is a Starlark `prefix_rule()` file that controls which shell commands Codex may run outside the sandbox. See the [Codex rules documentation](https://learn.chatgpt.com/docs/agent-configuration/rules).
 
 #### Windsurf Format Details
 
@@ -33,7 +35,7 @@ globs: **/*
 
 #### Cline Format Details
 
-Cline rules files are plain markdown files without frontmatter, similar to Roo Code format but stored in the `.clinerules/` directory. Cline automatically processes all markdown files in this directory.
+Cline rules files are plain markdown files stored in the `.clinerules/` directory at the project root. Cline automatically aggregates every `.md` file in this directory and appends it to the system prompt, so each rule is always on. Files may use numeric prefixes (e.g. `01-`, `02-`) to control ordering. The converter intentionally strips any YAML frontmatter so every emitted rule is unconditionally active (Cline also supports an optional per-file `paths:` conditional via frontmatter, but the converter does not use that mode).
 
 #### Kilo Code Format Details
 
@@ -53,7 +55,11 @@ Claude Code uses a `.claude/` directory with a `CLAUDE.md` master file that impo
 
 #### OpenAI Codex Format Details
 
-OpenAI Codex uses a single `AGENTS.md` file at the project root containing all rules as plain markdown. Codex discovers `AGENTS.md` by walking from the project root to the current working directory, loading files in order. All rules are concatenated into a single file.
+OpenAI Codex uses a single `AGENTS.md` file at the project root containing all rules as plain markdown. Codex discovers `AGENTS.md` by walking from the project root to the current working directory, loading files in order. All rules are concatenated into a single file. This is Codex's natural-language instructions mechanism.
+
+#### Codex `.rules` Format Details
+
+Separately from `AGENTS.md`, Codex reads `.rules` files (Starlark `prefix_rule()` definitions) that control which shell commands Codex may run outside the sandbox. The converter emits a single inert scaffold at `.codex/rules/default.rules` containing a header, a reference link, and a commented-out example `prefix_rule(...)`. Because the `.mdc` source is prose, command-prefix patterns cannot be auto-generated; the scaffold is a starting point to curate by hand. See the [Codex rules documentation](https://learn.chatgpt.com/docs/agent-configuration/rules).
 
 #### ZCode Format Details
 
@@ -61,7 +67,7 @@ ZCode uses a single `AGENTS.md` file at the project root as its always-on instru
 
 ### Output Directory Structure
 
-When converting, the tool creates files in all eleven formats:
+When converting, the tool creates files in all twelve formats:
 
 - **VS Code**: `.github/instructions/` directory with `.instructions.md` files
 - **Roo Code**: `.roo/rules/` directory with `.md` files
@@ -74,6 +80,7 @@ When converting, the tool creates files in all eleven formats:
 - **Claude Code**: `.claude/rules/` directory with `.md` files and a master `.claude/CLAUDE.md` file
 - **OpenAI Codex**: `AGENTS.md` file at the project root
 - **ZCode**: `AGENTS.md` file at the project root (shared with Codex)
+- **Codex `.rules`**: `.codex/rules/default.rules` scaffold at the project root
 
 ## Installation
 
@@ -115,7 +122,7 @@ poetry run harness-converter path/to/project path/to/rules-description.json -o p
 The tool processes template files through a 4-stage pipeline:
 1. **Template Variable Substitution** - Replace `{variable}` placeholders with values from the JSON configuration file
 2. **Path and File Validation** - Validate all file paths and references in processed rules
-3. **Format Conversion** - Convert to VS Code, Roo Code, Windsurf, Cline, Kilo Code, Gemini, Antigravity, Qwen Code, Claude Code, and Codex formats
+3. **Format Conversion** - Convert to VS Code, Roo Code, Windsurf, Cline, Kilo Code, Gemini, Antigravity, Qwen Code, Claude Code, and Codex formats, plus the Codex `.rules` command-policy scaffold
 4. **Deployment** - Place files in correct directory structure for each tool
 
 When processing, the tool will:
@@ -124,6 +131,7 @@ When processing, the tool will:
 - For Qwen Code, it will create a `.qwen/` directory with individual rules and a `QWEN.md` master file to import them.
 - For Claude Code, it will create a `.claude/rules/` directory with individual rules and a `.claude/CLAUDE.md` master file to import them.
 - For OpenAI Codex, it will create a single `AGENTS.md` at the project root with all rules concatenated.
+- For Codex `.rules`, it will create a single `.codex/rules/default.rules` scaffold at the project root.
 - Copy all non-template files from the source directory to the output directory (if output directory is specified), preserving the directory structure.
 - Maintain the directory structure inside each tool's rules directories.
 
@@ -143,9 +151,9 @@ A single installer script, `install_harness.sh`, is provided. It is portable (no
 ./install_harness.sh <toolkit_dir> <target_dir> [rules_definitions.json] [--link]
 ```
 
-It installs the **entire** converted bundle into `<target_dir>` — every top-level entry the converter produces, i.e. all eleven harness formats and any pass-through files:
+It installs the **entire** converted bundle into `<target_dir>` — every top-level entry the converter produces, i.e. all twelve harness outputs and any pass-through files:
 
-- `.agent/`, `.claude/`, `.clinerules/`, `.gemini/`, `.kilo/`, `.kilocode/`, `.qwen/`, `.roo/`, `.windsurf/`
+- `.agent/`, `.claude/`, `.clinerules/`, `.codex/`, `.gemini/`, `.kilo/`, `.kilocode/`, `.qwen/`, `.roo/`, `.windsurf/`
 - `.github/instructions/`
 - `AGENTS.md`, `kilo.jsonc`
 

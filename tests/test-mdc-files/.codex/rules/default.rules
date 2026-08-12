@@ -1,0 +1,15 @@
+# Codex command-policy rules (Starlark).
+#
+# Auto-scaffolded by harness-converter. Curate the prefix_rule() entries
+# by hand — the prose .mdc rule source cannot be auto-translated into
+# Starlark command-prefix patterns. This file ships inert (every rule is
+# commented out).
+#
+# Reference: https://learn.chatgpt.com/docs/agent-configuration/rules
+
+# Example: allow read-only git commands outside the sandbox.
+# prefix_rule(
+#     name = "git_read",
+#     lock = "allow",
+#     pattern = ["git status", "git log"],
+# )

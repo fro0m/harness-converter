@@ -9,12 +9,12 @@
 # - Converts <toolkit_dir> via harness-converter into <toolkit_dir>/copy-content-to-prj-directory
 #   (using the given rules_definitions.json, or the toolkit's default).
 # - Installs the ENTIRE bundle into <target_dir> — that is, every top-level entry
-#   produced by the converter: all eleven harness formats (.agent/, .claude/,
-#   .clinerules/, .gemini/, .github/instructions/, .kilo/, .kilocode/, .qwen/,
-#   .roo/, .windsurf/, AGENTS.md, kilo.jsonc) plus any other files the converter
-#   copied through. By default it COPIES them; with --link it SYMLINKS each
-#   top-level bundle entry into the target instead (so the harness always reflects
-#   the live toolkit without reinstall). Symlinks are machine-local and should be
+#   produced by the converter: all harness formats (.agent/, .claude/, .clinerules/,
+#   .codex/, .gemini/, .github/instructions/, .kilo/, .kilocode/, .qwen/, .roo/,
+#   .windsurf/, AGENTS.md, kilo.jsonc) plus any other files the converter copied
+#   through. By default it COPIES them; with --link it SYMLINKS each top-level
+#   bundle entry into the target instead (so the harness always reflects the live
+#   toolkit without reinstall). Symlinks are machine-local and should be
 #   gitignored in the target repo.
 # - Force-replaces the generated harness entries in <target_dir> (these are
 #   generated files, never hand-edited). Merges .github/instructions/ into an
@@ -110,7 +110,7 @@ fi
 #    NOTE: .github is NOT removed wholesale when real — a project may have real
 #    .github/workflows. Only .github/instructions (the harness output) is removed.
 echo "==> Cleaning generated entries in target..."
-GENERATED_TOP=(.agent .claude .clinerules .gemini .kilo .kilocode .qwen .roo .windsurf kilo.jsonc AGENTS.md)
+GENERATED_TOP=(.agent .claude .clinerules .codex .gemini .kilo .kilocode .qwen .roo .windsurf kilo.jsonc AGENTS.md)
 for d in "${GENERATED_TOP[@]}"; do
   if [ -L "$TARGET/$d" ] || [ -e "$TARGET/$d" ]; then rm -rf "$TARGET/$d"; fi
 done

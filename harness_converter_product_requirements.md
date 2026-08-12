@@ -86,6 +86,7 @@ The Harness Converter follows a 4-stage processing pipeline:
     *   Convert to Kilo Code rules files (`.md`)
     *   Convert to Gemini CLI rules files (`.md`)
     *   Convert to Google Antigravity, Qwen Code, Claude Code, OpenAI Codex, and ZCode formats
+    *   Emit the Codex `.rules` command-policy scaffold (`.codex/rules/default.rules`)
 *   **Directory Management**:
     *   Process entire directory trees recursively
     *   Maintain directory structure in output
@@ -104,6 +105,7 @@ The Harness Converter follows a 4-stage processing pipeline:
     *   Missing variable error handling with operation cancellation
     *   Path validation and error reporting
     *   Conversion to all eleven target formats
+    *   Codex `.rules` command-policy scaffold
     *   Smart output directory management
 *   **Should-have**: 
     *   Recursive directory processing
@@ -152,6 +154,7 @@ copy-content-to-prj-directory/
 ├── .agent/rules/                  # Google Antigravity format
 ├── .qwen/                         # Qwen Code format
 ├── .claude/rules/                 # Claude Code format (+ .claude/CLAUDE.md)
+├── .codex/rules/default.rules     # Codex .rules command-policy scaffold
 └── AGENTS.md                      # OpenAI Codex + ZCode format (shared)
 ```
 

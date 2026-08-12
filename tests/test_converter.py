@@ -20,7 +20,7 @@ def main():
         sys.exit(1)
     
     print("Converting single file...")
-    vscode_output_file, roo_output_file, windsurf_output_file, cline_output_file, gemini_cli_output_file, kilo_code_output_file, antigravity_output_file, qwen_code_output_file, claude_code_output_file, codex_output_file, zcode_output_file = convert_file(sample_file)
+    vscode_output_file, roo_output_file, windsurf_output_file, cline_output_file, gemini_cli_output_file, kilo_code_output_file, antigravity_output_file, qwen_code_output_file, claude_code_output_file, codex_output_file, zcode_output_file, codex_rules_output_file = convert_file(sample_file)
     print(f"Converted {sample_file}:")
     print(f"  - VS Code: {vscode_output_file}")
     print(f"  - Roo Code: {roo_output_file}")
@@ -33,6 +33,7 @@ def main():
     print(f"  - Claude Code: {claude_code_output_file}")
     print(f"  - OpenAI Codex: {codex_output_file}")
     print(f"  - ZCode: {zcode_output_file}")
+    print(f"  - Codex .rules: {codex_rules_output_file}")
     
     # Create a test directory with multiple MDC files
     test_project_dir = os.path.join(script_dir, 'test_project_programmatic')
@@ -78,7 +79,7 @@ def main():
     output_dir = os.path.join(script_dir, 'output_test_programmatic') # Generated; gitignored under tests/
     os.makedirs(output_dir, exist_ok=True) # Ensure output_dir exists
     
-    vscode_converted_paths, roo_converted_paths, windsurf_converted_paths, cline_converted_paths, gemini_cli_converted_paths, kilo_code_converted_paths, antigravity_converted_paths, qwen_code_converted_paths, claude_code_converted_paths, codex_converted_paths, zcode_converted_paths, copied_paths = convert_directory(test_project_dir, output_dir)
+    vscode_converted_paths, roo_converted_paths, windsurf_converted_paths, cline_converted_paths, gemini_cli_converted_paths, kilo_code_converted_paths, antigravity_converted_paths, qwen_code_converted_paths, claude_code_converted_paths, codex_converted_paths, zcode_converted_paths, codex_rules_converted_paths, copied_paths = convert_directory(test_project_dir, output_dir)
     
     total_processed = len(vscode_converted_paths) + len(copied_paths)
     print(f"Processed {total_processed} files to {output_dir}:")
@@ -125,6 +126,10 @@ def main():
     if zcode_converted_paths:
         print(f"  Converted {len(zcode_converted_paths)} '.mdc' files to ZCode rules:")
         for file_path in zcode_converted_paths:
+            print(f"    - {file_path}")
+    if codex_rules_converted_paths:
+        print(f"  Wrote {len(codex_rules_converted_paths)} Codex .rules scaffold file(s):")
+        for file_path in codex_rules_converted_paths:
             print(f"    - {file_path}")
     if copied_paths:
         print(f"  Copied {len(copied_paths)} other files:")

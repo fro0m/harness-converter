@@ -1033,7 +1033,64 @@ def save_zcode_instructions(instructions_content: str, output_path: str) -> None
         f.write(instructions_content)
 
 
-def convert_file(input_path_str: str, output_dir_str: Optional[str] = None) -> Tuple[str, str, str, str, str, str, str, str, str, str, str]:
+def build_codex_rules_scaffold() -> str:
+    """
+    Build the Codex .rules scaffold.
+
+    Codex `.rules` files are Starlark `prefix_rule()` definitions that control
+    which shell commands Codex may run outside the sandbox. They are distinct
+    from the natural-language `AGENTS.md` (already emitted as the Codex target).
+    The `.mdc` source is prose and cannot be auto-translated into Starlark
+    command-prefix patterns, so this emits a documented, inert scaffold at the
+    correct path for the user to curate.
+
+    See: https://learn.chatgpt.com/docs/agent-configuration/rules
+
+    Returns:
+        The scaffold content for `.codex/rules/default.rules`.
+    """
+    return (
+        "# Codex command-policy rules (Starlark).\n"
+        "#\n"
+        "# Auto-scaffolded by harness-converter. Curate the prefix_rule() entries\n"
+        "# by hand — the prose .mdc rule source cannot be auto-translated into\n"
+        "# Starlark command-prefix patterns. This file ships inert (every rule is\n"
+        "# commented out).\n"
+        "#\n"
+        "# Reference: https://learn.chatgpt.com/docs/agent-configuration/rules\n"
+        "\n"
+        "# Example: allow read-only git commands outside the sandbox.\n"
+        "# prefix_rule(\n"
+        "#     name = \"git_read\",\n"
+        "#     lock = \"allow\",\n"
+        "#     pattern = [\"git status\", \"git log\"],\n"
+        "# )\n"
+    )
+
+
+def write_codex_rules(base_output_dir: str) -> str:
+    """
+    Write the Codex .rules scaffold to .codex/rules/default.rules.
+
+    The file is bundle-level (written once per output directory, like AGENTS.md)
+    rather than per-rule, because .rules is a curated command-policy file.
+
+    See: https://learn.chatgpt.com/docs/agent-configuration/rules
+
+    Args:
+        base_output_dir: Base output directory (e.g. copy-content-to-prj-directory)
+
+    Returns:
+        Path to the written .codex/rules/default.rules file.
+    """
+    codex_rules_path = os.path.join(base_output_dir, ".codex", "rules", "default.rules")
+    os.makedirs(os.path.dirname(codex_rules_path), exist_ok=True)
+    with open(codex_rules_path, 'w', encoding='utf-8') as f:
+        f.write(build_codex_rules_scaffold())
+    return codex_rules_path
+
+
+def convert_file(input_path_str: str, output_dir_str: Optional[str] = None) -> Tuple[str, str, str, str, str, str, str, str, str, str, str, str]:
     """
     Convert a single template file to all target formats.
 
@@ -1043,7 +1100,8 @@ def convert_file(input_path_str: str, output_dir_str: Optional[str] = None) -> T
 
     Returns:
         Tuple of (VS Code, Roo Code, Windsurf, Cline, Gemini CLI, Kilo Code,
-        Antigravity, Qwen Code, Claude Code, Codex, ZCode instructions file paths)
+        Antigravity, Qwen Code, Claude Code, Codex AGENTS.md, ZCode, Codex .rules
+        file paths). ZCode shares AGENTS.md with Codex.
     """
     input_path_abs = os.path.abspath(input_path_str)
     input_file_name = os.path.basename(input_path_abs)
@@ -1159,6 +1217,11 @@ def convert_file(input_path_str: str, output_dir_str: Optional[str] = None) -> T
         # See: https://zcode.z.ai/en/docs/agents
         zcode_output_path = codex_output_path
 
+        # Codex .rules scaffold (bundle-level, once per output dir): .codex/rules/default.rules.
+        # Distinct from AGENTS.md: .rules is Starlark command-policy, scaffolded for hand curation.
+        # See: https://learn.chatgpt.com/docs/agent-configuration/rules
+        codex_rules_output_path = write_codex_rules(base_for_output)
+
         # Write kilo.jsonc with instructions referencing .kilo/rules/ directory
         kilo_rule_files_convert_file = [kilo_new_output_path]
         write_kilo_json(base_for_output, kilo_rule_files_convert_file)
@@ -1166,7 +1229,7 @@ def convert_file(input_path_str: str, output_dir_str: Optional[str] = None) -> T
         return (vscode_output_path, roo_output_path, windsurf_output_path,
                 cline_output_path, gemini_master_file_path, kilo_code_output_path,
                 antigravity_output_path, qwen_master_file_path, claude_master_file_path,
-                codex_output_path, zcode_output_path)
+                codex_output_path, zcode_output_path, codex_rules_output_path)
     except Exception as e:
         print(f"Error converting {input_path_abs}: {str(e)}")
         raise
@@ -1199,7 +1262,7 @@ def copy_file(input_path: str, output_dir: str, output_name: Optional[str] = Non
     return output_path
 
 
-def convert_directory(input_dir_str: str, output_dir_str: Optional[str] = None) -> Tuple[List[str], List[str], List[str], List[str], List[str], List[str], List[str], List[str], List[str], List[str], List[str], List[str]]:
+def convert_directory(input_dir_str: str, output_dir_str: Optional[str] = None) -> Tuple[List[str], List[str], List[str], List[str], List[str], List[str], List[str], List[str], List[str], List[str], List[str], List[str], List[str]]:
     """
     Convert all template files in a directory and its subdirectories.
     Input directory should contain processed template files (from Stage 1).
@@ -1214,7 +1277,7 @@ def convert_directory(input_dir_str: str, output_dir_str: Optional[str] = None) 
     Returns:
         Tuple containing lists of converted file paths for each format and copied files:
         (vscode, roo, windsurf, cline, gemini_cli, kilo_code, antigravity,
-         qwen_code, claude_code, codex, zcode, copied_files)
+         qwen_code, claude_code, codex, zcode, codex_rules, copied_files)
     """
     input_dir_abs = os.path.abspath(input_dir_str)
     vscode_converted_files = []
@@ -1228,11 +1291,12 @@ def convert_directory(input_dir_str: str, output_dir_str: Optional[str] = None) 
     claude_code_converted_files = []
     codex_converted_files = []
     zcode_converted_files = []
+    codex_rules_converted_files = []
     copied_files = []
 
     if not os.path.isdir(input_dir_abs):
         print(f"Info: Input directory not found at {input_dir_abs}. No files will be converted from this path.")
-        return [], [], [], [], [], [], [], [], [], [], [], []
+        return [], [], [], [], [], [], [], [], [], [], [], [], []
 
     # Use provided output directory or the parent of input directory
     if output_dir_str:
@@ -1415,6 +1479,12 @@ def convert_directory(input_dir_str: str, output_dir_str: Optional[str] = None) 
     # See: https://zcode.z.ai/en/docs/agents
     zcode_converted_files.append(codex_output_path)
 
+    # Codex .rules scaffold (bundle-level, once per output dir): .codex/rules/default.rules.
+    # Distinct from AGENTS.md: .rules is Starlark command-policy, scaffolded for hand curation.
+    # See: https://learn.chatgpt.com/docs/agent-configuration/rules
+    codex_rules_path = write_codex_rules(base_for_output)
+    codex_rules_converted_files.append(codex_rules_path)
+
     # Write Kilo Code kilo.jsonc with instructions referencing rules directory
     kilo_rule_files = [f for f in kilo_code_converted_files if "/.kilo/rules/" in f.replace("\\", "/")]
     if kilo_rule_files:
@@ -1424,4 +1494,4 @@ def convert_directory(input_dir_str: str, output_dir_str: Optional[str] = None) 
     return (vscode_converted_files, roo_converted_files, windsurf_converted_files,
             cline_converted_files, gemini_cli_converted_files, kilo_code_converted_files,
             antigravity_converted_files, qwen_code_converted_files, claude_code_converted_files,
-            codex_converted_files, zcode_converted_files, copied_files)
+            codex_converted_files, zcode_converted_files, codex_rules_converted_files, copied_files)
