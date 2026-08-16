@@ -176,25 +176,54 @@ shopt -u dotglob nullglob
 
 echo "  installed $install_count top-level bundle entries"
 
-# 4. Verify referenced paths resolve (validate against target dir)
+# 4. Verify referenced paths resolve (validate against target dir, across ALL
+#    emitted rule files — not just AGENTS.md: an agent that reads
+#    .claude/rules/general.md must not hit a dangling reference either).
+#    Fatal: missing cross-repo references (../…) and missing rule documents
+#    (.md/.mdx/.rules/.json). Warn-only: build outputs and tool artifacts
+#    (dist/, node_modules/, .venv/… exist only after a local build).
 echo "==> Verifying references..."
-env "${PY_ENV[@]}" "$PY" - "$TARGET/AGENTS.md" "$TARGET" <<'PYEOF'
+RULE_FILE_GLOBS=(
+  "AGENTS.md"
+  ".claude/CLAUDE.md" ".claude/rules/"*.md
+  ".agent/rules/"*.md
+  ".clinerules/"*.md
+  ".roo/rules/"*.md
+  ".windsurf/rules/"*.md
+  ".kilocode/rules/"*.md
+  ".kilo/rules/"*.md
+  ".gemini/"*.md
+  ".qwen/"*.md
+  ".github/instructions/"*.md
+)
+env "${PY_ENV[@]}" "$PY" - "$TARGET" "${RULE_FILE_GLOBS[@]}" <<'PYEOF'
 import sys
 from harness_converter.converter import extract_file_paths_from_content, validate_file_path
-agents, base = sys.argv[1], sys.argv[2]
-content = open(agents).read()
-paths = extract_file_paths_from_content(content)
-missing = []
-for p in paths:
-    cand = p
-    ok, _ = validate_file_path(cand, base)
-    if not ok and cand.endswith('.'):
-        ok, _ = validate_file_path(cand.rstrip('.'), base)
-    if not ok:
-        missing.append(p)
-print(f"  references: {len(paths)} | unresolved: {len(missing)}")
-for p in missing:
-    print(f"    MISSING: {p}")
-sys.exit(1 if missing else 0)
+base = sys.argv[1]
+files = [a for a in sys.argv[2:] if __import__('os').path.isfile(a)]
+fatal_exts = ('.md', '.mdx', '.rules', '.json')
+total = 0
+missing_fatal, missing_warn = [], []
+for f in files:
+    content = open(f, encoding='utf-8').read()
+    for p in extract_file_paths_from_content(content):
+        if any(s in p.lower() for s in ('http://', 'https://', 'mailto:', 'ftp://')):
+            continue
+        total += 1
+        ok, _ = validate_file_path(p, base)
+        if not ok and p.endswith('.'):
+            ok, _ = validate_file_path(p.rstrip('.'), base)
+        if ok:
+            continue
+        if p.startswith('../') or p.endswith(fatal_exts):
+            missing_fatal.append((f, p))
+        else:
+            missing_warn.append((f, p))
+print(f"  files: {len(files)} | references: {total} | fatal: {len(missing_fatal)} | warn: {len(missing_warn)}")
+for f, p in missing_fatal:
+    print(f"    MISSING (fatal): {p}   [{f}]")
+for f, p in missing_warn:
+    print(f"    missing (warn):  {p}   [{f}]")
+sys.exit(1 if missing_fatal else 0)
 PYEOF
 echo "==> Done: $TARGET"

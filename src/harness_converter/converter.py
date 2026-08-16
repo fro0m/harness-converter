@@ -218,6 +218,11 @@ def extract_file_paths_from_content(content: str) -> List[str]:
         # '/home/dev/...'). The lookbehind anchors the match at a real boundary.
         r'(?<![^\s])([/~][^\s]+)',
         r'(?<![^\s])([.]{1,2}[/\\][^\s]+)',
+        # Backtick-quoted path-like tokens (markdown inline code), e.g.
+        # `docs/architecture.md` or `../onboarding/git_guidelines.md`. Require a
+        # slash so plain inline code (commands, flags, branch names) is not
+        # treated as a path.
+        r'`([^`\s]+[/\\][^`\s]*)`',
     ]
     
     for pattern in path_patterns:
