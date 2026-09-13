@@ -46,6 +46,9 @@ def main(source_directory, rules_description_json, output_dir):
         # With explicit configuration file
         harness-converter /path/to/project /path/to/rules-description.json -o /path/to/output
     """
+    if source_directory is None:
+        raise click.UsageError('SOURCE_DIRECTORY is required')
+
     source_directory = os.path.abspath(source_directory)
     
     # Validate source directory contains raw-rules-template subdirectory

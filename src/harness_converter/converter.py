@@ -7,6 +7,7 @@ Qwen Code, Claude Code, OpenAI Codex, and ZCode.
 import os
 import json
 import re
+import shutil
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
@@ -73,9 +74,10 @@ def substitute_template_variables(content: str, variables: Dict[str, Any]) -> Tu
         Tuple of (substituted_content, list_of_missing_variables)
     """
     # Find all {variable} patterns in the content, but exclude JSON-like structures
-    # This pattern looks for {variable} where variable doesn't contain quotes or colons
-    # to avoid matching JSON object syntax like {"key": "value"}
-    variable_pattern = re.compile(r'\{([^}"\':\s][^}]*)\}')
+    # This pattern looks for {variable} where variable doesn't contain quotes, colons
+    # or newlines to avoid matching JSON object syntax like {"key": "value"}
+    # and to prevent an unbalanced '{' in prose from swallowing text across lines
+    variable_pattern = re.compile(r'\{([^}"\':\s][^}\n]*)\}')
     found_variables = variable_pattern.findall(content)
 
     # Track missing variables
@@ -141,6 +143,7 @@ def process_stage1_template_substitution(raw_rules_dir: str, rules_json_path: st
     all_missing_variables = set()
     
     # Create output directory
+    shutil.rmtree(cooked_rules_dir, ignore_errors=True)
     os.makedirs(cooked_rules_dir, exist_ok=True)
     
     # Process all files recursively
@@ -183,7 +186,6 @@ def process_stage1_template_substitution(raw_rules_dir: str, rules_json_path: st
         print(f"Error: {error_msg}")
         
         # Clean up cooked_rules_dir on error
-        import shutil
         if os.path.exists(cooked_rules_dir):
             shutil.rmtree(cooked_rules_dir)
         

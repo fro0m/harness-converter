@@ -170,7 +170,13 @@ install_entry() {
 # Iterate every top-level entry — regular and dotfiles — so nothing is skipped.
 shopt -s dotglob nullglob
 for entry in *; do
-  [ -e "$entry" ] && install_entry "$entry"
+  # Explicit if so a broken symlink ([ -e ] fails) never returns non-zero
+  # and aborts the whole install under set -e.
+  if [ -e "$entry" ]; then
+    install_entry "$entry"
+  else
+    log "skipping broken entry: $entry"
+  fi
 done
 shopt -u dotglob nullglob
 
