@@ -8,3 +8,5 @@
 .venv/
 .zcode/
 venv/
+# AI session artifacts (mimosa) — local tool state, never commit.
+/.mimosa/
