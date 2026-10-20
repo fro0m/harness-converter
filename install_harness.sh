@@ -41,7 +41,7 @@ if [ -x "$CONVERTER_DIR/venv/bin/python" ]; then
   # The venv may be bare (package not installed into it); always expose this
   # checkout's src on PYTHONPATH so 'harness_converter' is importable.
   PY_ENV=("PYTHONPATH=$CONVERTER_DIR/src")
-  CONVERTER=("$PY" -m harness_converter.cli)
+  CONVERTER=("env" "${PY_ENV[@]}" "$PY" -m harness_converter.cli)
 else
   PY="$(command -v python3 || true)"
   if [ -z "$PY" ]; then
