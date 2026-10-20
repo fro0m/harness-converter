@@ -91,8 +91,12 @@ fi
 if [ -z "${INSTALL_BUNDLE:-}" ]; then
   echo "==> Converting..."
   rm -rf "$TOOLKIT/cooked_rules_template" "$BUNDLE"
-  "${CONVERTER[@]}" "$TOOLKIT" "$CONFIG" -o "$BUNDLE" 2>&1 \
-    | sed -n '/Stage 2/,/completed successfully/p'
+  if ! conv_out="$("${CONVERTER[@]}" "$TOOLKIT" "$CONFIG" -o "$BUNDLE" 2>&1)"; then
+    echo "$conv_out" | tail -20 >&2
+    echo "Error: conversion failed for $TOOLKIT" >&2
+    exit 1
+  fi
+  echo "$conv_out" | sed -n '/Stage 2/,/completed successfully/p'
 else
   echo "==> Converting... (skipped — using preset bundle $BUNDLE)"
 fi
@@ -156,6 +160,18 @@ install_entry() {
     return
   fi
 
+  # mcp.json: targets commonly keep it as a symlink into this very bundle;
+  # copying onto it would abort with "are the same file". Same file -> skip,
+  # any other symlink -> replace with a fresh copy.
+  if [ "$entry" = "mcp.json" ] && [ -L "$TARGET/$entry" ]; then
+    if [ "$(stat -Lc %d:%i "$TARGET/$entry" 2>/dev/null)" = "$(stat -Lc %d:%i "$src" 2>/dev/null)" ]; then
+      echo "  skipped: $entry (target already links to this bundle file)"
+      install_count=$((install_count + 1))
+      return
+    fi
+    rm -f "$TARGET/$entry"
+  fi
+
   # All other entries (harness dirs + root files): install wholesale.
   if [ "$LINK_MODE" -eq 1 ]; then
     ln -sfn "$src" "$TARGET/$entry"
@@ -175,12 +191,34 @@ for entry in *; do
   if [ -e "$entry" ]; then
     install_entry "$entry"
   else
-    log "skipping broken entry: $entry"
+    echo "skipping broken entry: $entry"
   fi
 done
 shopt -u dotglob nullglob
 
 echo "  installed $install_count top-level bundle entries"
+
+# 3b. Guard: every installed entry must exist and must not be a dangling
+#     symlink. A symlink install that points at a toolkit bundle that is
+#     missing (or was installed from a nonexistent source) leaves the target
+#     with broken AGENTS.md / .claude/... entries that silently disable all
+#     rules. Fail loudly here so the breakage is caught at install time.
+echo "==> Checking installed entries resolve (no dangling links/files)..."
+dangling=0
+CHECK_ENTRIES=("${GENERATED_TOP[@]}" .github/instructions mcp.json)
+for d in "${CHECK_ENTRIES[@]}"; do
+  if [ -L "$TARGET/$d" ] || [ -e "$TARGET/$d" ]; then
+    if [ -L "$TARGET/$d" ] && [ ! -e "$TARGET/$d" ]; then
+      echo "  DANGLING: $TARGET/$d -> $(readlink "$TARGET/$d")" >&2
+      dangling=$((dangling + 1))
+    fi
+  fi
+done
+if [ "$dangling" -ne 0 ]; then
+  echo "Error: $dangling installed entry(ies) are dangling symlinks — toolkit bundle missing or incomplete: $BUNDLE" >&2
+  exit 1
+fi
+echo "  ok: no dangling entries"
 
 # 4. Verify referenced paths resolve (validate against target dir, across ALL
 #    emitted rule files — not just AGENTS.md: an agent that reads
